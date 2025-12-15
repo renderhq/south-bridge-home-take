@@ -70,7 +70,6 @@ export default function Page() {
     },
   ])
 
-  const [activeAgentIds, setActiveAgentIds] = useState<string[]>(["claude-code"])
   const [runningAgents, setRunningAgents] = useState<Record<string, () => void>>({})
 
   const handlePromptSubmit = async (prompt: string, files: File[]) => {
@@ -180,11 +179,11 @@ export default function Page() {
     <div className="min-h-screen bg-background flex flex-col font-mono text-foreground">
       <StatusBar model={config.model} onSettingsClick={() => setShowSettings(true)} />
 
-      <div className="flex flex-1 border-t border-border overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 border-t border-border overflow-hidden">
         {/* Sidebar */}
-        <div className="w-64 border-r border-border flex flex-col bg-muted/5 flex-shrink-0">
+        <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border flex flex-col bg-muted/5 flex-shrink-0 max-h-48 md:max-h-none overflow-hidden">
 
-          <div className="p-2 bg-muted/10 border-b border-border text-[9px] font-bold text-muted-foreground px-4 py-2">
+          <div className="p-2 bg-muted/10 border-b border-border text-[9px] font-bold text-muted-foreground px-4 py-2 sticky top-0 bg-background/95 backdrop-blur z-10">
             ACTIVE SESSIONS
           </div>
 
@@ -235,7 +234,7 @@ export default function Page() {
         </div>
 
         {/* Main Console Area */}
-        <div className="flex-1 flex flex-col min-w-0 bg-background/50">
+        <div className="flex-1 flex flex-col min-w-0 bg-background/50 h-[calc(100vh-16rem)] md:h-auto">
           <div className="flex-1 overflow-hidden relative">
             <AgentPanel
               agent={activeAgentData}
@@ -246,12 +245,12 @@ export default function Page() {
           </div>
 
           {/* Semantic Prompt Input - Centered & Clean */}
-          <div className="border-t border-border bg-background p-6">
+          <div className="border-t border-border bg-background p-4 md:p-6 pb-20 md:pb-6">
             <div className="max-w-3xl mx-auto w-full">
               <PromptForm onSubmit={handlePromptSubmit} />
 
               {/* Agent Target Selector */}
-              <div className="flex items-center gap-4 mt-3 pl-1">
+              <div className="flex flex-wrap items-center gap-4 mt-3 pl-1">
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Target:</span>
                 {agents.map(a => (
                   <label key={a.id} className="flex items-center gap-2 text-xs cursor-pointer hover:text-primary transition-colors select-none">

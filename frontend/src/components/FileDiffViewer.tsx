@@ -56,9 +56,9 @@ export function FileDiffViewer({ diffs, selectedFile, onSelectFile }: FileDiffVi
     };
 
     return (
-        <div className="grid grid-cols-12 h-full gap-0 overflow-hidden bg-background">
+        <div className="flex flex-col md:grid md:grid-cols-12 h-full gap-0 overflow-hidden bg-background">
             {/* File List Sidebar */}
-            <div className="col-span-3 border-r border-border bg-muted/5 flex flex-col overflow-hidden">
+            <div className="md:col-span-3 h-32 md:h-full border-b md:border-b-0 md:border-r border-border bg-muted/5 flex flex-col overflow-hidden shrink-0">
                 <div className="p-3 border-b border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                     <FileCode className="w-3 h-3" />
                     Modified Files ({diffs.length})
@@ -88,7 +88,7 @@ export function FileDiffViewer({ diffs, selectedFile, onSelectFile }: FileDiffVi
             </div>
 
             {/* Diff View Area */}
-            <div className="col-span-9 flex flex-col h-full overflow-hidden bg-background/50">
+            <div className="md:col-span-9 flex flex-col flex-1 h-full overflow-hidden bg-background/50">
                 <div className="p-3 border-b border-border flex items-center justify-between bg-muted/5">
                     <div className="flex items-center gap-2 text-xs font-mono text-foreground font-medium">
                         <span className="opacity-50">{displayDiff?.path.split('/').slice(0, -1).join('/')}/</span>
