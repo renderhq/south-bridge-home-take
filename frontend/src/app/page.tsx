@@ -3,49 +3,56 @@
 import { useState } from "react"
 import { AgentPanel } from "@/components/agent-panel"
 import { StatusBar } from "@/components/status-bar"
+import { PromptForm } from "@/components/prompt-form" // Fixed export/import
+import { MOCK_AGENTS, streamResponse } from "@/lib/mock-api"
 
 export default function Page() {
-  const [selectedAgent, setSelectedAgent] = useState<string | null>("claude-code")
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>("claude-code")
+  const [agents, setAgents] = useState(MOCK_AGENTS)
 
-  const agents = [
-    {
-      id: "claude-code",
-      name: "CLAUDE.CODE",
-      status: "STREAMING",
-      task: "AUTH_MODULE_REFACTOR",
-      progress: 67,
-      output: `// Implementation uses JWT tokens instead of session-based auth\n\nconst implementation = {\n  store: 'in-memory session store',\n  method: 'JWT tokens',\n  path: '/src/auth/jwt.ts'\n}\n\n// Create JWT service\nexport const jwtAuth = {\n  sign: (payload) => jwt.sign(payload, SECRET),\n  verify: (token) => jwt.verify(token, SECRET)\n}\n\n// Refactored middleware\nexport const requireAuth = async (req, res, next) => {\n  const token = req.headers.authorization\n  if (!token) return res.status(401).json({ error: 'Unauthorized' })\n  \n  try {\n    const user = jwtAuth.verify(token)\n    req.user = user\n    next()\n  } catch (err) {\n    return res.status(401).json({ error: 'Invalid token' })\n  }\n}`,
-      files: ["/src/auth/jwt.ts", "/src/middleware/auth.ts", "/src/routes/api.ts"],
-    },
-    {
-      id: "gemini-cli",
-      name: "GEMINI.CLI",
-      status: "READY",
-      task: "TOKEN_REFRESH_COMPONENT",
-      progress: 100,
-      output: `// Utility functions for signing and verifying tokens\n\nconst validateJWT = (token: string): boolean => {\n  try {\n    const decoded = jwt.verify(token, process.env.JWT_SECRET)\n    return decoded.exp > Date.now() / 1000\n  } catch {\n    return false\n  }\n}\n\n// Token refresh endpoint\nexport async function POST(req: Request) {\n  const refreshToken = req.headers.get('x-refresh-token')\n  \n  if (!refreshToken || !validateJWT(refreshToken)) {\n    return Response.json({ error: 'Invalid refresh token' }, { status: 401 })\n  }\n  \n  const newAccessToken = generateAccessToken(userId)\n  return Response.json({ accessToken: newAccessToken })\n}`,
-      files: ["/src/utils/auth.ts", "/src/app/api/auth/refresh/route.ts"],
-    },
-    {
-      id: "codex",
-      name: "CODEX",
-      status: "ERROR",
-      task: "PERMISSION_SYSTEM",
-      progress: 43,
-      output: `// Permission service implementation\n\ntype Permission = 'read' | 'write' | 'delete' | 'admin'\n\ninterface User {\n  id: string\n  permissions: Permission[]\n}\n\nexport const hasPermission = (user: User, required: Permission): boolean => {\n  if (user.permissions.includes('admin')) return true\n  return user.permissions.includes(required)\n}\n\n// ERROR: Missing permission check in /api/users endpoint\n// This may be incorrect - need to verify\n\n[!] Cannot find file: /src/permissions/schema.ts`,
-      files: ["/src/permissions/index.ts"],
-    },
-  ]
+  const handlePromptSubmit = async (prompt: string, files: File[]) => {
+    // Determine which agent is selected or broadcast to all active?
+    // For this take-home level 2, we simulate sending to the selected agent.
+    if (!selectedAgentId) return
+
+    // 1. Update status to thinking
+    setAgents(prev => prev.map(a =>
+      a.id === selectedAgentId
+        ? { ...a, status: "THINKING", task: "PROMPT_ANALYSIS", output: "" }
+        : a
+    ))
+
+    // 2. Start streaming simulation
+    await streamResponse(
+      prompt,
+      (chunk) => {
+        setAgents(prev => prev.map(a =>
+          a.id === selectedAgentId
+            ? { ...a, status: "STREAMING", output: chunk, progress: Math.min(95, a.progress + 5) }
+            : a
+        ))
+      },
+      (files) => {
+        setAgents(prev => prev.map(a =>
+          a.id === selectedAgentId
+            ? { ...a, status: "READY", task: "COMPLETED", progress: 100, files: files }
+            : a
+        ))
+      }
+    )
+  }
+
+  const selectedAgent = agents.find((a) => a.id === selectedAgentId)
 
   return (
-    <div className="min-h-screen bg-background flex flex-col font-mono">
+    <div className="min-h-screen bg-background flex flex-col font-mono text-foreground">
       <StatusBar />
 
-      <div className="flex flex-1 border-t border-border">
+      <div className="flex flex-1 border-t border-border overflow-hidden">
         {/* Agent List Sidebar */}
-        <div className="w-64 border-r border-border flex flex-col">
+        <div className="w-64 border-r border-border flex flex-col bg-sidebar">
           <div className="p-4 border-b border-border">
-            <div className="text-[10px] font-medium tracking-wider">ACTIVE.AGENTS</div>
+            <div className="text-[10px] font-medium tracking-wider text-muted-foreground">ACTIVE.AGENTS</div>
             <div className="text-[10px] text-muted-foreground mt-1">3 / 8 ALLOCATED</div>
           </div>
 
@@ -53,29 +60,29 @@ export default function Page() {
             {agents.map((agent) => (
               <button
                 key={agent.id}
-                onClick={() => setSelectedAgent(agent.id)}
-                className={`w-full text-left p-4 border-b border-border hover:bg-muted transition-colors ${selectedAgent === agent.id ? "bg-muted" : ""
+                onClick={() => setSelectedAgentId(agent.id)}
+                className={`w-full text-left p-4 border-b border-border transition-colors hover:bg-sidebar-accent/50 ${selectedAgentId === agent.id ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-muted-foreground"
                   }`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="text-xs font-medium tracking-wide">{agent.name}</div>
                   <div
-                    className={`text-[9px] px-1.5 py-0.5 border ${agent.status === "STREAMING"
-                        ? "border-foreground"
-                        : agent.status === "READY"
-                          ? "border-muted-foreground"
-                          : "border-destructive"
+                    className={`text-[9px] px-1.5 py-0.5 border ${agent.status === "STREAMING" || agent.status === "THINKING"
+                        ? "border-primary text-primary animate-pulse"
+                        : agent.status === "READY" || agent.status === "IDLE"
+                          ? "border-muted-foreground text-muted-foreground"
+                          : "border-destructive text-destructive"
                       }`}
                   >
                     {agent.status}
                   </div>
                 </div>
-                <div className="text-[10px] text-muted-foreground mb-2">{agent.task}</div>
+                <div className="text-[10px] opacity-70 mb-2 truncate">{agent.task}</div>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-0.5 bg-muted">
-                    <div className="h-full bg-foreground" style={{ width: `${agent.progress}%` }} />
+                    <div className="h-full bg-primary" style={{ width: `${agent.progress}%` }} />
                   </div>
-                  <div className="text-[9px] text-muted-foreground">{agent.progress}%</div>
+                  <div className="text-[9px] opacity-70">{Math.round(agent.progress)}%</div>
                 </div>
               </button>
             ))}
@@ -89,8 +96,19 @@ export default function Page() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          {selectedAgent && <AgentPanel agent={agents.find((a) => a.id === selectedAgent)!} />}
+        <div className="flex-1 flex flex-col min-w-0">
+          {selectedAgent ? (
+            <>
+              <div className="flex-1 overflow-hidden flex flex-col">
+                <AgentPanel agent={selectedAgent} />
+              </div>
+              <PromptForm onSubmit={handlePromptSubmit} disabled={selectedAgent.status === "STREAMING"} />
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs tracking-widest">
+              SELECT AN AGENT TO BEGIN_
+            </div>
+          )}
         </div>
       </div>
     </div>

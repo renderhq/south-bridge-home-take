@@ -1,48 +1,52 @@
-import React, { useState, ChangeEvent, FormEvent } from "react";
+"use client"
+
+import { useState } from "react"
+import { Send, Paperclip } from "lucide-react"
 
 interface PromptFormProps {
-    onSubmit: (prompt: string, files: File[]) => void;
+    onSubmit: (prompt: string, files: File[]) => void
+    disabled?: boolean
 }
 
-export default function PromptForm({ onSubmit }: PromptFormProps) {
-    const [prompt, setPrompt] = useState<string>("");
-    const [files, setFiles] = useState<File[]>([]);
+export function PromptForm({ onSubmit, disabled }: PromptFormProps) {
+    const [input, setInput] = useState("")
+    const [files, setFiles] = useState<File[]>([])
 
-    const handlePromptChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-        setPrompt(e.target.value);
-    };
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!input.trim() && files.length === 0) return
 
-    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            setFiles(Array.from(e.target.files));
-        }
-    };
-
-    const handleSubmit = (e: FormEvent) => {
-        e.preventDefault();
-        if (prompt.trim()) {
-            onSubmit(prompt, files);
-            setPrompt("");
-            setFiles([]);
-        }
-    };
+        onSubmit(input, files)
+        setInput("")
+        setFiles([])
+    }
 
     return (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-4 border border-border rounded bg-muted">
-            <textarea
-                value={prompt}
-                onChange={handlePromptChange}
-                placeholder="Enter your prompt..."
-                className="w-full p-2 border border-border rounded bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-foreground"
-                rows={4}
-            />
-            <input type="file" multiple onChange={handleFileChange} className="text-foreground" />
-            <button
-                type="submit"
-                className="self-start px-4 py-2 bg-foreground text-background rounded hover:bg-muted"
-            >
-                Submit
-            </button>
+        <form onSubmit={handleSubmit} className="p-4 border-t border-border bg-background">
+            <div className="relative flex items-center gap-2">
+                <button
+                    type="button"
+                    className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                    title="Attach files"
+                >
+                    <Paperclip className="w-4 h-4" />
+                </button>
+                <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Submit instruction to active agents..."
+                    disabled={disabled}
+                    className="flex-1 bg-muted border-none text-sm px-4 py-2 focus:ring-1 focus:ring-primary outline-none"
+                />
+                <button
+                    type="submit"
+                    disabled={disabled || (!input && files.length === 0)}
+                    className="px-4 py-2 bg-primary text-primary-foreground text-xs font-medium tracking-wide hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                    EXECUTE
+                </button>
+            </div>
         </form>
-    );
+    )
 }
