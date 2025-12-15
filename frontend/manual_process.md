@@ -104,8 +104,8 @@ I identified the recursion immediately. I manually edited `package.json` to `"de
 
 ### Incident A: Tailwind Version Mismactch
 *   **Expectation**: Valid utility classes for Tailwind v4.
-*   **Reality**: The AI kept suggesting `tailwind.config.js` modifications.
-*   **Root Cause Analysis**: The model's training data cuts off before Tailwind v4 became standard/beta. It defaults to v3 patterns.
+*   **Streaming**: The text streaming is simulated (`setTimeout`). It is not real network traffic. All agents stream simultaneously when invoked.
+*   **File I/O**: The "File Upload" button in `PromptForm` accepts files but does not read them.Tailwind v4 became standard/beta. It defaults to v3 patterns.
 *   **Corrective Action**: I ignored all configuration prompts and manually wrote the CSS variables in `globals.css` based on the official v4 documentation I verified externally.
 
 ### Incident B: The Infinite Loop
