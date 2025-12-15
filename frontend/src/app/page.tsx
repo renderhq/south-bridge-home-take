@@ -194,7 +194,7 @@ export default function Page() {
               <div
                 key={agent.id}
                 onClick={() => setSelectedAgentId(agent.id)}
-                className={`w-full text-left p-3 md:p-4 border-b border-border cursor-pointer transition-all hover:bg-muted/10 relative group ${selectedAgentId === agent.id ? "bg-muted/20" : ""
+                className={`w-full text-left p-3 md:p-4 border-b border-border cursor-pointer transition-all duration-200 hover:bg-muted/10 active:bg-muted/30 active:scale-[0.99] relative group ${selectedAgentId === agent.id ? "bg-muted/20" : ""
                   }`}
               >
                 {/* Active Indicator Strip */}

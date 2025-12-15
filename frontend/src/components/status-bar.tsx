@@ -6,7 +6,7 @@ interface StatusBarProps {
 
 export function StatusBar({ onSettingsClick }: StatusBarProps) {
     return (
-        <div className="h-12 border-b border-border flex items-center justify-between px-6 text-[10px] font-medium tracking-wider">
+        <div className="h-12 min-h-[3rem] pt-[env(safe-area-inset-top)] border-b border-border flex items-center justify-between px-4 md:px-6 text-[10px] font-medium tracking-wider bg-background z-50 shrink-0">
             <div className="flex items-center gap-6">
                 <div className="text-xs tracking-[0.2em]">AGENT.CONTROL</div>
                 <div className="flex items-center gap-4 text-muted-foreground">
