@@ -35,7 +35,7 @@ export function PromptForm({ onSubmit, disabled }: PromptFormProps) {
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="Enter system command..."
                     disabled={disabled}
-                    className="w-full min-h-[80px] bg-background border border-border px-3 py-2 text-base md:text-xs font-mono resize-y focus:ring-1 focus:ring-primary focus:border-primary transition-all placeholder:text-muted-foreground/50 rounded-sm"
+                    className="w-full min-h-[60px] md:min-h-[80px] bg-background border border-border px-3 py-2 text-base md:text-xs font-mono resize-y focus:ring-1 focus:ring-primary focus:border-primary transition-all placeholder:text-muted-foreground/50 rounded-sm"
                     onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                             e.preventDefault()

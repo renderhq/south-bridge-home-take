@@ -177,24 +177,24 @@ export default function Page() {
   const activeAgentData = agents.find(a => a.id === selectedAgentId) || agents[0];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col font-mono text-foreground">
+    <div className="h-dvh w-full bg-background flex flex-col font-mono text-foreground overflow-hidden supports-[height:100cqh]:h-[100cqh]">
       <StatusBar model={config.model} onSettingsClick={() => setShowSettings(true)} />
 
       <div className="flex flex-col md:flex-row flex-1 border-t border-border overflow-hidden">
         {/* Sidebar */}
-        <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border flex flex-col bg-muted/5 flex-shrink-0 max-h-48 md:max-h-none overflow-hidden">
+        <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border flex flex-col bg-muted/5 flex-shrink-0 max-h-[25dvh] md:max-h-none overflow-hidden transition-all duration-300">
 
-          <div className="p-2 bg-muted/10 border-b border-border text-[9px] font-bold text-muted-foreground px-4 py-2 sticky top-0 bg-background/95 backdrop-blur z-10">
+          <div className="p-2 bg-muted/10 border-b border-border text-[9px] font-bold text-muted-foreground px-4 py-2 sticky top-0 bg-background/95 backdrop-blur z-10 shrink-0">
             ACTIVE SESSIONS
           </div>
 
           {/* Agent List */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto overscroll-contain">
             {agents.map((agent) => (
               <div
                 key={agent.id}
                 onClick={() => setSelectedAgentId(agent.id)}
-                className={`w-full text-left p-4 border-b border-border cursor-pointer transition-all hover:bg-muted/10 relative group ${selectedAgentId === agent.id ? "bg-muted/20" : ""
+                className={`w-full text-left p-3 md:p-4 border-b border-border cursor-pointer transition-all hover:bg-muted/10 relative group ${selectedAgentId === agent.id ? "bg-muted/20" : ""
                   }`}
               >
                 {/* Active Indicator Strip */}
@@ -203,10 +203,10 @@ export default function Page() {
                 )}
 
                 <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-bold tracking-tight ${selectedAgentId === agent.id ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"}`}>
+                  <span className={`text-xs font-bold tracking-tight truncate mr-2 ${selectedAgentId === agent.id ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"}`}>
                     {agent.name}
                   </span>
-                  <span className={`text-[9px] px-1.5 py-0.5 border rounded-sm ${agent.status === "STREAMING" ? "border-green-500 text-green-500 animate-pulse" :
+                  <span className={`text-[9px] px-1.5 py-0.5 border rounded-sm shrink-0 ${agent.status === "STREAMING" ? "border-green-500 text-green-500 animate-pulse" :
                     agent.status === "ERROR" ? "border-red-500 text-red-500" :
                       "border-border text-muted-foreground"
                     }`}>
@@ -225,7 +225,7 @@ export default function Page() {
                       style={{ width: `${agent.progress}%` }}
                     />
                   </div>
-                  <span className="text-[9px] text-muted-foreground font-mono">{Math.round(agent.progress)}%</span>
+                  <span className="text-[9px] text-muted-foreground font-mono w-6 text-right">{Math.round(agent.progress)}%</span>
                 </div>
               </div>
             ))}
@@ -235,7 +235,7 @@ export default function Page() {
         </div>
 
         {/* Main Console Area */}
-        <div className="flex-1 flex flex-col min-w-0 bg-background/50 h-[calc(100vh-16rem)] md:h-auto">
+        <div className="flex-1 flex flex-col min-w-0 bg-background/50 h-full overflow-hidden">
           <div className="flex-1 overflow-hidden relative">
             <AgentPanel
               agent={activeAgentData}
@@ -246,22 +246,22 @@ export default function Page() {
           </div>
 
           {/* Semantic Prompt Input - Centered & Clean */}
-          <div className="border-t border-border bg-background p-4 md:p-6 pb-20 md:pb-6">
+          <div className="border-t border-border bg-background p-4 md:p-6 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-6 shrink-0 z-20">
             <div className="max-w-3xl mx-auto w-full">
               <PromptForm onSubmit={handlePromptSubmit} />
 
               {/* Agent Target Selector */}
-              <div className="flex flex-wrap items-center gap-4 mt-3 pl-1">
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Target:</span>
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-3 pl-1">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground shrink-0">Target:</span>
                 {agents.map(a => (
                   <label key={a.id} className="flex items-center gap-2 text-xs cursor-pointer hover:text-primary transition-colors select-none">
                     <input
                       type="checkbox"
                       checked={activeAgentIds.includes(a.id)}
                       onChange={() => toggleAgentSelection(a.id)}
-                      className="accent-primary rounded-sm w-3 h-3"
+                      className="accent-primary rounded-sm w-3 h-3 shrink-0"
                     />
-                    <span className={activeAgentIds.includes(a.id) ? "text-foreground font-medium" : "text-muted-foreground"}>{a.name}</span>
+                    <span className={activeAgentIds.includes(a.id) ? "text-foreground font-medium truncate max-w-[100px]" : "text-muted-foreground truncate max-w-[100px]"}>{a.name}</span>
                   </label>
                 ))}
               </div>
