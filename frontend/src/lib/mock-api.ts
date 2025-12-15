@@ -57,3 +57,32 @@ export const MOCK_AGENTS = [
         files: [],
     },
 ]
+
+export const MOCK_TOOL_CALLS = [
+    {
+        id: "call_1",
+        tool: "fs.list_files",
+        args: { path: "./src/components" },
+        status: "completed",
+        timestamp: "10:23:45",
+        result: "Found: Header.tsx, Footer.tsx"
+    },
+    {
+        id: "call_2",
+        tool: "semantic_search",
+        args: { query: "authentication middleware" },
+        status: "completed",
+        timestamp: "10:23:48",
+        result: "Matches in src/middleware.ts (85%)"
+    }
+];
+
+export const MOCK_DIFFS = [
+    {
+        path: "/src/auth.ts",
+        type: "modify",
+        original: `export function auth() {\n  return false;\n}`,
+        modified: `export function auth() {\n  // Implementation of JWT\n  return true;\n}`
+    }
+];
+

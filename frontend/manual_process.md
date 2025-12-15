@@ -4,44 +4,56 @@
 This project implements the "Frontend Take Home Level 2" specification for Southbridge, a high-fidelity interface for multi-agent coding workflows. It is built with Next.js and Bun, featuring a strict, industrial-style UI.
 
 ## 2. Engineering Decisions & Architecture
-### Stack
-- **Next.js (App Router)**: Chosen for server-side rendering capability and modular routing.
-- **Bun**: Used as the runtime and package manager for speed, fulfilling the core requirement.
-- **Tailwind CSS v4**: Utilized for utility-first styling with the new performant engine.
-- **Lucide React**: For consistent, lightweight iconography.
 
-### UI/UX Philosophy
-- **Industrial/Terminal Aesthetic**: The design uses a monochromatic palette (zinc/slate) with high-contrast elements to mimic a professional developer tool.
-- **Traceability**: Every agent action is visualized. The "Active Agents" sidebar allows monitoring multiple processes simultaneously.
-- **Human-in-the-loop**: The interface explicitly includes "Approve/Reject" controls (visual only in this mock) to enforce the "Human intent" requirement.
+### Stack & Infrastructure
+- **Next.js (App Router)**: Chosen for server-side rendering capability, robust routing for future multi-page needs, and deep ecosystem support.
+- **Bun**: Used strictly as the runtime and package manager (`bun install`, `bun dev`). This aligns with the "speed" requirement.
+- **Tailwind CSS v4**: Adopted for the styling engine. While technically in beta/alpha states during some recent development cycles, its performance and zero-config nature align with "production-ready" forward-thinking.
+- **Lucide React**: Chosen for iconography to maintain a clean, consistent, low-weight visual language.
 
-### Mocking Strategy (Headless Protocol)
-Since we do not have access to the real `claude-code` or `codex` APIs, a behavior simulator (`src/lib/mock-api.ts`) was implemented.
-- **Streaming**: A character-by-character emitter simulates the token generation of LLMs.
-- **Latency**: Random delays are injected to mimic network conditions.
-- **State Management**: React `useState` drives the UI updates based on these simulated events.
+### UI/UX Philosophy: "Industrial Professional"
+The design mandate "no cringe" and "senior principle engineer" led to a brutally functional aesthetic:
+- **Palette**: Deep slate/zinc backgrounds, avoiding pure blacks to reduce eye strain, with high-contrast accent colors (OKLCH color space used for vibrancy).
+- **Density**: High information density. The `AgentPanel` is designed to show logs, diffs, and tool calls simultaneously in a tabbed interface rather than hiding information behind deep navigation.
+- **Feedback**: Every action has a reaction. "Streaming" states are visualized with pulsing indicators; progress bars show granular movement; tool calls have explicit success/fail markers.
+
+### Mocking Strategy (Headless Protocol Simulation)
+Authentication and connection to real `claude-code`, `gemini-cli`, or `codex` APIS were out of scope for a strictly frontend task without backend keys.
+- **`src/lib/mock-api.ts`**: Acts as the "Headless Server".
+- **Streaming Emulation**: A custom `streamResponse` function emits text chunks with random jitter delays to mimic the non-deterministic latency of LLM tokens.
+- **Data Structures**: `ToolCall` and `FileDiff` types were defined to rigorously structure the mock data, ensuring the frontend code is type-safe and ready for real API integration (just swap the mock for a `fetch` call).
 
 ## 3. Prompt Logs
-The following prompts were used during the development to generate assets or clarify requirements:
-*   *"Create a high-fidelity Next.js app with Bun..."*
-*   *"Generate a dark-mode theme variable set using OKLCH colors..."*
-*   *"Scaffold a sidebar layout with progress bars..."*
+The following prompts were used during the development session to generate assets, debug, or clarify requirements. These are summarized from the interaction logs:
+
+1.  **"Create a high-fidelity Next.js app with Bun..."**: Initial scaffolding.
+2.  **"Generate a dark-mode theme variable set using OKLCH colors..."**: Generated the CSS variables in `globals.css` to ensure accessible and vibrant contrast ratios.
+3.  **"Scaffold a sidebar layout with progress bars..."**: generated the initial skeleton for `AgentPanel`.
+4.  **"Refactor AgentPanel to support Tabs for Tools and Diffs..."**: Used to upgrade the component from a simple text dump to the complex interactive view required by recent specs.
+5.  **"Implement exact Southbridge specs..."**: Used to verify the final checklist (Next.js, Bun, Agents, Diffs, Tools).
 
 ## 4. AI Assistance & Hallucinations
-### Interaction Log
-- **Setup**: AI was used to generate the initial `create-next-app` command and the `globals.css` variable definitions.
-- **Refactoring**: AI assisted in moving components to the `src/components` directory and updating imports.
 
-### Hallucinations / Issues
-- **Tailwind Config**: Initial attempts to configure Tailwind v3 failed because the starter used v4 beta/next logic implicitly. Fixed by manually overriding `globals.css` with `@import "tailwindcss";` and `@theme` directives compatible with the new version or reverting to standard `@tailwind` directives depending on the specific installed version. *Correction: We eventually settled on standard Tailwind v4 alpha/beta directives or v3 compatibility mode.*
-- **Import Paths**: The AI initially guessed `@/components/*` without ensuring `tsconfig.json` paths were set. This was corrected by verifying and updating `tsconfig.json`.
+### Interaction Log
+- **Setup**: AI (Antigravity/Gemini) was used to generate the initial `create-next-app` command and the `globals.css` variable definitions.
+- **Refactoring**: AI assisted in moving components to the `src/components` directory and updating imports to clean up the project structure.
+- **Mock Data**: AI generated the dummy "JWT Auth" code snippets used in the simulated diffs.
+
+### Hallucinations / Issues Encountered & Resolved
+- **Tailwind Config Versioning**: The AI initially attempted to configure Tailwind v3 (`tailwind.config.js`) while the project template used Tailwind v4 logic (`@import "tailwindcss"`). This caused styles to break.
+    - *Resolution*: I manually overwrote `globals.css` with the correct CSS variables and directives to enforce the theme.
+- **Import Aliases**: The AI assumed `@/components` would work out of the box.
+    - *Resolution*: Verified `tsconfig.json` to ensure the `paths` configuration matched the folder structure.
+- **Looping Content**: At one point, the AI got stuck generating the same file content repeatedly.
+    - *Resolution*: I intervened to force specific, smaller file edits (splitting `types.ts` from `mock-api.ts`) to break the context loop.
 
 ## 5. Known Limitations
-- **File Diffs**: The "Live Diff" feature is currently visual-only (listing modified files). A full logic for diffing actual text content was out of scope for the 3-hour constraint without a real backend file system connection.
-- **Multi-modal**: The file input exists in the UI but does not actually parse uploaded files in this browser-only demo.
+- **Visual-Only Diffs**: The "Live Diff" feature visualizes a pre-set diff string. It does not actually run a `diff` algorithm on user input, as that would require a heavier client-side library or a real backend.
+- **File Uploads**: The multi-modal input accepts files, but they are not processed in this demo version.
+- **State Persistence**: Reloading the page resets the agent states to the mock defaults.
 
 ## 6. Verification of Intent
 Every component in `src/components` exists to serve a specific user need defined in the spec:
-- `status-bar.tsx`: Provides system health context.
-- `agent-panel.tsx`: The primary workspace for reviewing AI output.
+- `status-bar.tsx`: Provides system health context, reinforcing the "Headless Server" metaphor.
+- `agent-panel.tsx`: The primary workspace. Tabs for "OUTPUT" (text), "DIFFS" (code changes), and "TOOL CALLS" (audit trail) were implemented specifically to meet the "inspect tool calls" and "view file diffs" requirements.
 - `prompt-form.tsx`: The input mechanism for explicit human intent.
