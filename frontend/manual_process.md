@@ -61,6 +61,7 @@ I used AI assistance (Antigravity/Gemini) throughout this process. Below is the 
 *   **Streaming**: The text streaming is simulated (`setTimeout`). It is not real network traffic.
 *   **File I/O**: The "File Upload" button in `PromptForm` accepts files but does not read them. Implementing a browser-based file reader was out of scope for the 3-hour limit.
 *   **Diff Logic**: The diff view shows a pre-canned diff. It does not dynamically compare user input.
+*   **Deployment**: The application is not deployed to a public URL (Vercel/Netlify) as I am working in a restricted environment. I have provided the `build` artifact and execution instructions instead.
 
 ---
 
