@@ -3,17 +3,16 @@
 import { useState } from "react"
 import { AgentPanel } from "@/components/agent-panel"
 import { StatusBar } from "@/components/status-bar"
-import { PromptForm } from "@/components/prompt-form" // Fixed export/import
+import { Settings } from "@/components/settings"
+import { PromptForm } from "@/components/prompt-form" // Added missing import
 import { MOCK_AGENTS, streamResponse, MOCK_TOOL_CALLS, MOCK_DIFFS } from "@/lib/mock-api"
 import { MOCK_AGENTS as INITIAL_AGENTS } from "@/lib/mock-api"
-import type { ToolCall, FileDiff } from "@/lib/types"
 
-// We need to extend the Agent type locally or import it if shared, 
-// for now let's cast or define interfaces to match.
 
 export default function Page() {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>("claude-code")
   const [agents, setAgents] = useState(INITIAL_AGENTS)
+  const [showSettings, setShowSettings] = useState(false)
 
   const handlePromptSubmit = async (prompt: string, files: File[]) => {
     if (!selectedAgentId) return
@@ -59,7 +58,7 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-mono text-foreground">
-      <StatusBar />
+      <StatusBar onSettingsClick={() => setShowSettings(true)} />
 
       <div className="flex flex-1 border-t border-border overflow-hidden">
         {/* Sidebar */}
@@ -113,10 +112,6 @@ export default function Page() {
           {selectedAgent ? (
             <>
               <div className="flex-1 overflow-hidden flex flex-col">
-                {/* 
-                        We cast agent string[] files to any here because AgentPanel
-                        expects Agent type which now has better typing locally 
-                      */}
                 <AgentPanel agent={selectedAgent as any} />
               </div>
               <PromptForm onSubmit={handlePromptSubmit} disabled={selectedAgent.status === "STREAMING"} />
@@ -128,6 +123,9 @@ export default function Page() {
           )}
         </div>
       </div>
+
+      {/* Settings Modal Overlay */}
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
     </div>
   )
 }
