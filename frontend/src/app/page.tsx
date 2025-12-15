@@ -70,6 +70,7 @@ export default function Page() {
     },
   ])
 
+  const [activeAgentIds, setActiveAgentIds] = useState<string[]>(["claude-code"])
   const [runningAgents, setRunningAgents] = useState<Record<string, () => void>>({})
 
   const handlePromptSubmit = async (prompt: string, files: File[]) => {
