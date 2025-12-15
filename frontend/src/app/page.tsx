@@ -2,109 +2,276 @@
 
 import { useState } from "react"
 import { StatusBar } from "@/components/ui/status-bar"
-import { PromptForm } from "@/components/prompt/PromptForm" // Updated import
-import { StreamingConsole, ToolCall, FileDiff } from "@/components/StreamingConsole"
 import { Settings } from "@/components/settings"
-
-// Mock Data Generator
-const MOCK_TOOL_CALL: ToolCall = {
-  id: "call_123",
-  tool: "fs.read_file",
-  args: { path: "src/auth/config.ts" },
-  status: "completed",
-  result: "content...",
-  timestamp: "12:04:33"
-}
-
-const MOCK_DIFF: FileDiff = {
-  path: "src/auth/config.ts",
-  original: "export const AUTH_ENABLED = false;",
-  modified: "export const AUTH_ENABLED = true;\nexport const AUTH_PROVIDER = 'auth0';"
-}
+import { PromptForm } from "@/components/PromptForm"
+import { AgentPanel } from "@/components/AgentPanel"
+import { AgentState, ToolCall, FileDiff, SimulationConfig } from "@/lib/types"
+import { simulateAgent } from "@/lib/mock-api"
+import { ToastContainer, useToast } from "@/components/ui/toast"
 
 export default function Page() {
-  const [agents, setAgents] = useState([
-    { id: "claude", name: "Claude Code", selected: true, status: "IDLE", output: "Waiting for instructions...", toolCalls: [], diffs: [] },
-    { id: "opencode", name: "OpenCode", selected: true, status: "IDLE", output: "System Online.", toolCalls: [], diffs: [] },
-    { id: "codex", name: "Codex", selected: true, status: "IDLE", output: "Ready.", toolCalls: [], diffs: [] }
-  ])
-  const [isStreaming, setIsStreaming] = useState(false)
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("claude-code")
   const [showSettings, setShowSettings] = useState(false)
 
-  const handlePromptSubmit = async (prompt: string) => {
-    setIsStreaming(true)
+  // Toast notifications
+  const { toasts, showToast, closeToast } = useToast()
 
-    // 1. Set all selected agents to Streaming
-    setAgents(prev => prev.map(a => a.selected ? { ...a, status: "STREAMING", output: "", toolCalls: [], diffs: [] } : a))
+  // Simulation Configuration State
+  const [config, setConfig] = useState<SimulationConfig>({
+    model: "claude-3-opus",
+    maxTokens: 4000,
+    temperature: 0.7,
+    workingDir: "./src",
+    streamSpeed: 150
+  })
 
-    // 2. Simulate parallel streaming for all selected agents
-    const updateInterval = setInterval(() => {
-      setAgents(prev => prev.map(a => {
-        if (!a.selected || a.status !== "STREAMING") return a;
+  const [agents, setAgents] = useState<AgentState[]>([
+    {
+      id: "claude-code",
+      name: "CLAUDE.CODE",
+      status: "IDLE",
+      task: "WAITING_FOR_INPUT",
+      progress: 0,
+      output: "Agent ready. Awaiting instructions...",
+      files: [],
+      toolCalls: [],
+      diffs: [],
+      logs: [],
+      time: "0s",
+      tokens: "0"
+    },
+    {
+      id: "gemini-cli",
+      name: "GEMINI.CLI",
+      status: "IDLE",
+      task: "WAITING_FOR_INPUT",
+      progress: 0,
+      output: "System initialized. Ready.",
+      files: [],
+      toolCalls: [],
+      diffs: [],
+      logs: [],
+      time: "0s",
+      tokens: "0"
+    },
+    {
+      id: "codex",
+      name: "CODEX",
+      status: "IDLE",
+      task: "WAITING_FOR_INPUT",
+      progress: 0,
+      output: "Codex engine standby.",
+      files: [],
+      toolCalls: [],
+      diffs: [],
+      logs: [],
+      time: "0s",
+      tokens: "0"
+    },
+  ])
 
-        // Append random tokens
-        const newOutput = a.output + " " + ["analyzing", "checking", "updating", "refactoring", "context"][Math.floor(Math.random() * 5)];
+  const [activeAgentIds, setActiveAgentIds] = useState<string[]>(["claude-code"])
+  const [runningAgents, setRunningAgents] = useState<Record<string, () => void>>({})
 
-        // Randomly inject a tool call
-        const newTools = Math.random() > 0.95 ? [...a.toolCalls, { ...MOCK_TOOL_CALL, id: Date.now().toString() }] : a.toolCalls;
+  const handlePromptSubmit = async (prompt: string, files: File[]) => {
+    // 1. Reset and Start
+    const targets = agents.filter(a => activeAgentIds.includes(a.id));
 
-        // Randomly inject a diff
-        const newDiffs = Math.random() > 0.98 ? [...a.diffs, MOCK_DIFF] : a.diffs;
+    // Reset state for target agents
+    setAgents(prev => prev.map(a => {
+      if (activeAgentIds.includes(a.id)) {
+        return {
+          ...a,
+          status: "THINKING",
+          progress: 0,
+          output: `> ${prompt}\n\n`,
+          toolCalls: [],
+          diffs: [],
+          logs: [],
+          tokens: "0",
+          time: "0s"
+        }
+      }
+      return a;
+    }));
 
-        return { ...a, output: newOutput, toolCalls: newTools as any, diffs: newDiffs as any };
-      }))
-    }, 100)
+    // 2. Trigger Simulation for each
+    targets.forEach(agent => {
+      // Create a wrapper to handle cleanup
+      const handleComplete = () => {
+        setRunningAgents(prev => {
+          const newState = { ...prev };
+          delete newState[agent.id];
+          return newState;
+        });
+      };
 
-    // 3. Finish after 5 seconds
-    setTimeout(() => {
-      clearInterval(updateInterval)
-      setAgents(prev => prev.map(a => a.selected ? { ...a, status: "COMPLETED" } : a))
-      setIsStreaming(false)
-    }, 5000)
+      const startTime = Date.now();
+      const cancelFn = simulateAgent(agent.id, prompt, {
+        onStream: (chunk) => {
+          setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, output: a.output + chunk } : a));
+          // Update time/tokens roughly
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          setAgents(prev => prev.map(a => a.id === agent.id ? {
+            ...a,
+            time: `${elapsed}s`,
+            tokens: `${Math.floor(a.output.length / 3.5) + 120}`
+          } : a));
+        },
+        onToolCall: (tool) => {
+          setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, toolCalls: [...a.toolCalls, tool] } : a));
+        },
+        onToolUpdate: (toolId, update) => {
+          setAgents(prev => prev.map(a => {
+            if (a.id !== agent.id) return a;
+            return {
+              ...a,
+              toolCalls: a.toolCalls.map(t => t.id === toolId ? { ...t, ...update } : t)
+            }
+          }));
+        },
+        onDiff: (diff) => {
+          setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, diffs: [...a.diffs, diff], files: [...new Set([...a.files, diff.path])] } : a));
+        },
+        onProgress: (prog) => {
+          setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, progress: prog } : a));
+        },
+        onStatus: (status) => {
+          setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, status: status } : a));
+        },
+        onLog: (log) => {
+          setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, logs: [...a.logs, log] } : a));
+        },
+        onComplete: () => {
+          handleComplete();
+        }
+      }, config); // Pass config to simulation
+
+      // Verify cancelFn is returned (it might be void if mock-api not updated yet in memory, but we wrote it)
+      if (typeof cancelFn === 'function') {
+        setRunningAgents(prev => ({ ...prev, [agent.id]: cancelFn }));
+      }
+    });
   }
 
+  const handleStopAgent = (agentId: string) => {
+    if (runningAgents[agentId]) {
+      runningAgents[agentId]();
+      setRunningAgents(prev => {
+        const newState = { ...prev };
+        delete newState[agentId];
+        return newState;
+      });
+      showToast(`Stopped agent ${agentId}`, "info");
+    }
+  }
+
+  const toggleAgentSelection = (id: string) => {
+    setActiveAgentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  const updateAgent = (agentId: string, updates: Partial<AgentState>) => {
+    setAgents(prev => prev.map(a => a.id === agentId ? { ...a, ...updates } : a));
+  }
+
+  const activeAgentData = agents.find(a => a.id === selectedAgentId) || agents[0];
+
   return (
-    <div className="min-h-screen bg-background text-foreground font-mono flex flex-col">
-      <StatusBar onSettingsClick={() => setShowSettings(true)} />
+    <div className="min-h-screen bg-background flex flex-col font-mono text-foreground">
+      <StatusBar model={config.model} onSettingsClick={() => setShowSettings(true)} />
 
-      <main className="flex-1 max-w-6xl mx-auto w-full p-4 flex flex-col gap-6">
-        {/* Top Section: Prompt & Controls */}
-        <section className="border border-border p-4 bg-muted/10 rounded-sm">
-          <PromptForm onSubmit={handlePromptSubmit} disabled={isStreaming} />
+      <div className="flex flex-1 border-t border-border overflow-hidden">
+        {/* Sidebar */}
+        <div className="w-64 border-r border-border flex flex-col bg-muted/5 flex-shrink-0">
 
-          {/* Agent Selector (Mock Multi-select) */}
-          <div className="mt-4 flex gap-4 border-t border-border pt-4">
-            <span className="text-xs text-muted-foreground uppercase tracking-wider py-1">Target Agents:</span>
-            {agents.map(agent => (
-              <label key={agent.id} className="flex items-center gap-2 text-xs cursor-pointer hover:text-primary">
-                <input
-                  type="checkbox"
-                  checked={agent.selected}
-                  onChange={() => setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, selected: !a.selected } : a))}
-                  className="accent-primary"
-                />
-                {agent.name}
-              </label>
+          <div className="p-2 bg-muted/10 border-b border-border text-[9px] font-bold text-muted-foreground px-4 py-2">
+            ACTIVE SESSIONS
+          </div>
+
+          {/* Agent List */}
+          <div className="flex-1 overflow-y-auto">
+            {agents.map((agent) => (
+              <div
+                key={agent.id}
+                onClick={() => setSelectedAgentId(agent.id)}
+                className={`w-full text-left p-4 border-b border-border cursor-pointer transition-all hover:bg-muted/10 relative group ${selectedAgentId === agent.id ? "bg-muted/20" : ""
+                  }`}
+              >
+                {/* Active Indicator Strip */}
+                {selectedAgentId === agent.id && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+                )}
+
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-xs font-bold tracking-tight ${selectedAgentId === agent.id ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"}`}>
+                    {agent.name}
+                  </span>
+                  <span className={`text-[9px] px-1.5 py-0.5 border rounded-sm ${agent.status === "STREAMING" ? "border-green-500 text-green-500 animate-pulse" :
+                    agent.status === "ERROR" ? "border-red-500 text-red-500" :
+                      "border-border text-muted-foreground"
+                    }`}>
+                    {agent.status}
+                  </span>
+                </div>
+
+                <div className="text-[10px] text-muted-foreground truncate font-mono mb-2 opacity-80">
+                  {agent.task}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${agent.status === 'ERROR' ? 'bg-red-500' : 'bg-primary'} transition-all duration-500`}
+                      style={{ width: `${agent.progress}%` }}
+                    />
+                  </div>
+                  <span className="text-[9px] text-muted-foreground font-mono">{Math.round(agent.progress)}%</span>
+                </div>
+              </div>
             ))}
           </div>
-        </section>
 
-        {/* Streaming Area - Simultaneous Output */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 flex-1">
-          {agents.filter(a => a.selected).map(agent => (
-            <StreamingConsole
-              key={agent.id}
-              agentName={agent.name}
-              status={agent.status}
-              output={agent.output}
-              toolCalls={agent.toolCalls as any}
-              diffs={agent.diffs as any}
+
+        </div>
+
+        {/* Main Console Area */}
+        <div className="flex-1 flex flex-col min-w-0 bg-background/50">
+          <div className="flex-1 overflow-hidden relative">
+            <AgentPanel
+              agent={activeAgentData}
+              showToast={showToast}
+              onUpdateAgent={updateAgent}
+              onStopAgent={handleStopAgent}
             />
-          ))}
-        </section>
-      </main>
+          </div>
 
-      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+          {/* Semantic Prompt Input - Centered & Clean */}
+          <div className="border-t border-border bg-background p-6">
+            <div className="max-w-3xl mx-auto w-full">
+              <PromptForm onSubmit={handlePromptSubmit} />
+
+              {/* Agent Target Selector */}
+              <div className="flex items-center gap-4 mt-3 pl-1">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Target:</span>
+                {agents.map(a => (
+                  <label key={a.id} className="flex items-center gap-2 text-xs cursor-pointer hover:text-primary transition-colors select-none">
+                    <input
+                      type="checkbox"
+                      checked={activeAgentIds.includes(a.id)}
+                      onChange={() => toggleAgentSelection(a.id)}
+                      className="accent-primary rounded-sm w-3 h-3"
+                    />
+                    <span className={activeAgentIds.includes(a.id) ? "text-foreground font-medium" : "text-muted-foreground"}>{a.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {showSettings && <Settings config={config} onSave={setConfig} onClose={() => setShowSettings(false)} />}
+      <ToastContainer toasts={toasts} onClose={closeToast} />
     </div>
   )
 }

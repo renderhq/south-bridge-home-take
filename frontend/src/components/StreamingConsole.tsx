@@ -1,105 +1,118 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Terminal, FileCode, Activity } from "lucide-react"
-
-export interface AgentStep {
-    output: string
-    toolCalls?: ToolCall[]
-    diffs?: FileDiff[]
-}
-
-export interface ToolCall {
-    id: string
-    tool: string
-    args: Record<string, any>
-    status: "running" | "completed" | "failed"
-    result?: string
-    timestamp: string
-}
-
-export interface FileDiff {
-    path: string
-    original: string
-    modified: string
-}
+import { AgentState } from "@/lib/types"
+import { ToolCallViewer } from "./ToolCallViewer"
+import { FileDiffViewer } from "./FileDiffViewer"
 
 interface StreamingConsoleProps {
-    agentName: string
-    status: string
-    output: string
-    toolCalls: ToolCall[]
-    diffs: FileDiff[]
+    agent: AgentState
 }
 
-export function StreamingConsole({ agentName, status, output, toolCalls, diffs }: StreamingConsoleProps) {
+export function StreamingConsole({ agent }: StreamingConsoleProps) {
     const [activeTab, setActiveTab] = useState<"output" | "tools" | "diffs">("output")
+    const [selectedFile, setSelectedFile] = useState<string | null>(null)
+    const scrollRef = useRef<HTMLDivElement>(null)
+
+    // Auto-scroll on output update
+    useEffect(() => {
+        if (activeTab === "output" && scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+        }
+    }, [agent.output, activeTab])
 
     return (
-        <div className="border border-border bg-black/50 flex flex-col h-[400px] mb-4">
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/10">
-                <div className="font-mono text-sm font-bold text-foreground">{agentName}</div>
-                <div className={`text-[10px] px-2 py-1 border ${status === "STREAMING" ? "border-green-500 text-green-500 animate-pulse" : "border-muted-foreground text-muted-foreground"
-                    }`}>
-                    {status}
+        <div className="flex-1 flex flex-col bg-background/50 h-full border-l border-border">
+            {/* Header Info */}
+            <div className="border-b border-border px-6 py-4 bg-muted/5">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="flex items-center gap-3 mb-1">
+                            <div className={`w-2.5 h-2.5 rounded-full ${agent.status === 'STREAMING' ? 'bg-green-500 animate-pulse' :
+                                agent.status === 'ERROR' ? 'bg-red-500' :
+                                    'bg-muted-foreground'
+                                }`} />
+                            <h2 className="text-xl font-mono font-medium tracking-tight text-foreground">{agent.name}</h2>
+                        </div>
+                        <p className="text-xs text-muted-foreground font-mono tracking-wide pl-5">{agent.task}</p>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2 font-mono">
+                        <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                            <span>TIME: {agent.time || "0s"}</span>
+                            <span>TOKENS: {agent.tokens || "0"}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="w-32 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-primary transition-all duration-300 ease-out"
+                                    style={{ width: `${agent.progress}%` }}
+                                />
+                            </div>
+                            <span className="text-xs font-bold w-8 text-right">{Math.round(agent.progress)}%</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex border-b border-border">
-                <button onClick={() => setActiveTab("output")} className={`px-4 py-2 text-xs font-mono flex items-center gap-2 border-r border-border ${activeTab === "output" ? "bg-muted/20 text-foreground" : "text-muted-foreground hover:bg-muted/10"}`}>
-                    <Terminal size={12} /> OUTPUT
+            {/* Navigation Tabs */}
+            <div className="flex border-b border-border bg-muted/10 font-mono text-xs">
+                <button
+                    onClick={() => setActiveTab("output")}
+                    className={`flex-1 py-3 flex items-center justify-center gap-2 border-r border-border transition-colors hover:bg-muted/20 ${activeTab === "output" ? "bg-background text-primary border-b-2 border-b-primary" : "text-muted-foreground"
+                        }`}
+                >
+                    <Terminal className="w-3 h-3" />
+                    LIVE OUTPUT
                 </button>
-                <button onClick={() => setActiveTab("tools")} className={`px-4 py-2 text-xs font-mono flex items-center gap-2 border-r border-border ${activeTab === "tools" ? "bg-muted/20 text-foreground" : "text-muted-foreground hover:bg-muted/10"}`}>
-                    <Activity size={12} /> TOOLS ({toolCalls.length})
+                <button
+                    onClick={() => setActiveTab("tools")}
+                    className={`flex-1 py-3 flex items-center justify-center gap-2 border-r border-border transition-colors hover:bg-muted/20 ${activeTab === "tools" ? "bg-background text-primary border-b-2 border-b-primary" : "text-muted-foreground"
+                        }`}
+                >
+                    <Activity className="w-3 h-3" />
+                    TOOL CALLS
+                    {agent.toolCalls.length > 0 && (
+                        <span className="bg-primary text-primary-foreground px-1.5 py-0.5 rounded-sm text-[9px] font-bold min-w-[16px] text-center">{agent.toolCalls.length}</span>
+                    )}
                 </button>
-                <button onClick={() => setActiveTab("diffs")} className={`px-4 py-2 text-xs font-mono flex items-center gap-2 border-r border-border ${activeTab === "diffs" ? "bg-muted/20 text-foreground" : "text-muted-foreground hover:bg-muted/10"}`}>
-                    <FileCode size={12} /> DIFFS ({diffs.length})
+                <button
+                    onClick={() => setActiveTab("diffs")}
+                    className={`flex-1 py-3 flex items-center justify-center gap-2 transition-colors hover:bg-muted/20 ${activeTab === "diffs" ? "bg-background text-primary border-b-2 border-b-primary" : "text-muted-foreground"
+                        }`}
+                >
+                    <FileCode className="w-3 h-3" />
+                    FILE DIFFS
+                    {agent.diffs.length > 0 && (
+                        <span className="bg-primary text-primary-foreground px-1.5 py-0.5 rounded-sm text-[9px] font-bold min-w-[16px] text-center">{agent.diffs.length}</span>
+                    )}
                 </button>
             </div>
 
-            {/* Content Area */}
-            <div className="flex-1 overflow-auto p-4 font-mono text-xs">
-                {activeTab === "output" && (
-                    <pre className="whitespace-pre-wrap text-muted-foreground">
-                        <span className="text-green-500 mr-2">➜</span>
-                        {output}
-                        {status === "STREAMING" && <span className="inline-block w-2 h-4 bg-green-500/50 animate-pulse ml-1 align-middle" />}
-                    </pre>
-                )}
+            {/* Main Content Area */}
+            <div className="flex-1 overflow-hidden relative bg-black/40">
+                <div ref={scrollRef} className="h-full overflow-y-auto custom-scrollbar">
+                    {activeTab === "output" && (
+                        <div className="p-6 font-mono text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                            <span className="text-primary mr-2">➜</span>
+                            {agent.output}
+                            {agent.status === "STREAMING" && (
+                                <span className="inline-block w-2 h-4 bg-primary ml-1 align-middle animate-pulse" />
+                            )}
+                        </div>
+                    )}
 
-                {activeTab === "tools" && (
-                    <div className="space-y-3">
-                        {toolCalls.map(tool => (
-                            <div key={tool.id} className="border border-border p-2 bg-muted/5">
-                                <div className="flex justify-between mb-1 text-green-400">
-                                    <span>{tool.tool}</span>
-                                    <span className="text-[10px] opacity-70">{tool.timestamp}</span>
-                                </div>
-                                <pre className="text-[10px] text-muted-foreground overflow-x-auto">
-                                    {JSON.stringify(tool.args, null, 2)}
-                                </pre>
-                            </div>
-                        ))}
-                        {toolCalls.length === 0 && <div className="text-muted-foreground italic">No tool calls recorded.</div>}
-                    </div>
-                )}
+                    {activeTab === "tools" && <ToolCallViewer toolCalls={agent.toolCalls} />}
 
-                {activeTab === "diffs" && (
-                    <div className="space-y-4">
-                        {diffs.map((diff, idx) => (
-                            <div key={idx} className="border border-border">
-                                <div className="bg-muted/20 px-3 py-1 text-xs border-b border-border">{diff.path}</div>
-                                <div className="grid grid-cols-2 text-[10px]">
-                                    <div className="p-2 bg-red-950/20 text-red-400/80 overflow-x-auto whitespace-pre">{diff.original}</div>
-                                    <div className="p-2 bg-green-950/20 text-green-400/80 overflow-x-auto whitespace-pre">{diff.modified}</div>
-                                </div>
-                            </div>
-                        ))}
-                        {diffs.length === 0 && <div className="text-muted-foreground italic">No file changes detected.</div>}
-                    </div>
-                )}
+                    {activeTab === "diffs" && <FileDiffViewer diffs={agent.diffs} selectedFile={selectedFile} onSelectFile={setSelectedFile} />}
+                </div>
+            </div>
+
+            {/* Footer / Status Bar */}
+            <div className="border-t border-border px-4 py-2 bg-muted/5 flex justify-between items-center text-[10px] font-mono text-muted-foreground">
+                <span>STATUS: {agent.status}</span>
+                <span>ID: {agent.id}</span>
             </div>
         </div>
     )

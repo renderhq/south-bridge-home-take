@@ -1,187 +1,121 @@
 "use client"
 
+import { Play, Check, X, Clock, Terminal, ChevronRight, ChevronDown } from "lucide-react"
+import { ToolCall } from "@/lib/types"
 import { useState } from "react"
-import { Terminal, FileCode, Activity, Play, ChevronRight, Check } from "lucide-react"
 
-interface ToolCall {
-    id: string;
-    tool: string;
-    args: Record<string, any>;
-    status: "running" | "completed" | "failed";
-    result?: string;
-    timestamp: string;
+interface ToolCallViewerProps {
+    toolCalls: ToolCall[]
 }
 
-interface FileDiff {
-    path: string;
-    original: string;
-    modified: string;
-    type: "modify" | "create" | "delete";
-}
-
-interface Agent {
-    id: string
-    name: string
-    status: string
-    task: string
-    progress: number
-    output: string
-    files: string[]
-    toolCalls?: ToolCall[]
-    diffs?: FileDiff[]
-}
-
-interface AgentPanelProps {
-    agent: Agent
-}
-
-export function AgentPanel({ agent }: AgentPanelProps) {
-    const [view, setView] = useState<"output" | "files" | "tools">("output")
+export function ToolCallViewer({ toolCalls }: ToolCallViewerProps) {
+    if (!toolCalls || toolCalls.length === 0) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8 animate-in fade-in duration-500">
+                <Terminal className="w-12 h-12 mb-4 opacity-20" />
+                <p className="text-sm font-mono tracking-wide">NO TOOL CALLS RECORDED</p>
+                <p className="text-xs opacity-50 mt-2">Agent has not executed any tools yet.</p>
+            </div>
+        )
+    }
 
     return (
-        <div className="flex-1 flex flex-col bg-background/50">
+        <div className="absolute inset-0 overflow-auto p-4 scrollbar-thin bg-black/5 space-y-3">
+            {toolCalls.map((call, index) => (
+                <ToolCallItem key={call.id || index} call={call} index={index} />
+            ))}
+            <div className="h-4" /> {/* Spacer */}
+        </div>
+    )
+}
+
+function ToolCallItem({ call, index }: { call: ToolCall; index: number }) {
+    const [isExpanded, setIsExpanded] = useState(true)
+    const isRunning = call.status === "running"
+
+    return (
+        <div className={`border rounded-sm overflow-hidden transition-all duration-300 animate-in slide-in-from-bottom-2 ${isRunning
+                ? "border-yellow-500/30 bg-yellow-500/5"
+                : call.status === "failed"
+                    ? "border-destructive/30 bg-destructive/5"
+                    : "border-border bg-muted/10"
+            }`}>
             {/* Header */}
-            <div className="border-b border-border px-6 py-4 bg-muted/20">
-                <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                            <div className="text-xl font-medium tracking-wide font-mono">{agent.name}</div>
-                        </div>
-                        <div className="text-xs text-muted-foreground tracking-wide font-mono pl-4">{agent.task}</div>
+            <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full flex items-center justify-between px-3 py-2 border-b border-border/10 hover:bg-muted/10 transition-colors"
+            >
+                <div className="flex items-center gap-2.5">
+                    {isExpanded ? <ChevronDown className="w-3 h-3 opacity-50" /> : <ChevronRight className="w-3 h-3 opacity-50" />}
+                    <div className={`p-1 rounded-sm ${isRunning ? 'bg-yellow-500/10' : 'bg-primary/10'}`}>
+                        <Play className={`w-3 h-3 ${isRunning ? 'text-yellow-500' : 'text-primary'}`} />
                     </div>
-
-                    <div className="flex items-center gap-4 font-mono">
-                        <div className="text-[10px] text-muted-foreground">PROGRESS: {agent.progress}%</div>
-                        <div
-                            className={`text-[10px] px-2 py-1 border ${agent.status === "STREAMING" || agent.status === "THINKING"
-                                    ? "border-primary text-primary"
-                                    : agent.status === "READY"
-                                        ? "border-green-500 text-green-500"
-                                        : "border-muted-foreground text-muted-foreground"
-                                }`}
-                        >
-                            {agent.status}
-                        </div>
-                    </div>
+                    <span className="text-xs font-bold text-foreground font-mono">{call.tool}</span>
                 </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="border-b border-border flex font-mono text-xs">
-                <button
-                    onClick={() => setView("output")}
-                    className={`px-6 py-3 flex items-center gap-2 border-r border-border transition-all ${view === "output" ? "bg-background text-foreground border-b-2 border-b-primary" : "hover:bg-muted/50 text-muted-foreground"
-                        }`}
-                >
-                    <Terminal className="w-3 h-3" />
-                    OUTPUT
-                </button>
-                <button
-                    onClick={() => setView("files")}
-                    className={`px-6 py-3 flex items-center gap-2 border-r border-border transition-all ${view === "files" ? "bg-background text-foreground border-b-2 border-b-primary" : "hover:bg-muted/50 text-muted-foreground"
-                        }`}
-                >
-                    <FileCode className="w-3 h-3" />
-                    DIFFS
-                    <span className="px-1.5 py-0.5 rounded-full bg-muted text-[10px]">{agent.files.length}</span>
-                </button>
-                <button
-                    onClick={() => setView("tools")}
-                    className={`px-6 py-3 flex items-center gap-2 border-r border-border transition-all ${view === "tools" ? "bg-background text-foreground border-b-2 border-b-primary" : "hover:bg-muted/50 text-muted-foreground"
-                        }`}
-                >
-                    <Activity className="w-3 h-3" />
-                    TOOL CALLS
-                    <span className="px-1.5 py-0.5 rounded-full bg-muted text-[10px]">{agent.toolCalls?.length || 0}</span>
-                </button>
-            </div>
+                <div className="flex items-center gap-3">
+                    <span className="text-[9px] text-muted-foreground font-mono">{call.timestamp}</span>
+                    <StatusBadge status={call.status} />
+                </div>
+            </button>
 
             {/* Content */}
-            <div className="flex-1 overflow-hidden font-mono relative">
-                {view === "output" && (
-                    <div className="h-full overflow-y-auto p-6 bg-black/40">
-                        <pre className="text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground">
-                            <span className="text-primary">{">"}</span> {agent.output}
-                            <span className="animate-pulse inline-block w-2 h-4 bg-primary ml-1 align-middle opacity-50" />
-                        </pre>
+            {isExpanded && (
+                <div className="p-3 text-[10px] sm:text-xs font-mono grid gap-3 animate-in fade-in duration-200">
+                    {/* Arguments */}
+                    <div className="space-y-1">
+                        <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold flex items-center gap-2">
+                            <span className="w-1 h-1 rounded-full bg-blue-500"></span>
+                            Arguments
+                        </div>
+                        <div className="bg-black/20 rounded border border-border/30 p-2 overflow-x-auto text-muted-foreground">
+                            <pre className="whitespace-pre-wrap break-all">
+                                {JSON.stringify(call.args, null, 2)}
+                            </pre>
+                        </div>
                     </div>
-                )}
 
-                {view === "files" && (
-                    <div className="h-full overflow-y-auto bg-black/40">
-                        {agent.diffs?.map((diff, index) => (
-                            <div key={index} className="border-b border-border">
-                                <div className="bg-muted/30 px-4 py-2 text-xs flex items-center justify-between text-muted-foreground">
-                                    <span>{diff.path}</span>
-                                    <span className="text-[10px] uppercase">{diff.type}</span>
-                                </div>
-                                <div className="grid grid-cols-2 text-[10px] divide-x divide-border">
-                                    <div className="p-4 overflow-x-auto bg-red-950/10 text-red-400/80">
-                                        {diff.original.split('\n').map((line, i) => (
-                                            <div key={i} className="whitespace-pre"> <span className="w-4 inline-block text-muted-foreground/30">{i + 1}</span> - {line}</div>
-                                        ))}
-                                    </div>
-                                    <div className="p-4 overflow-x-auto bg-green-950/10 text-green-400/80">
-                                        {diff.modified.split('\n').map((line, i) => (
-                                            <div key={i} className="whitespace-pre"> <span className="w-4 inline-block text-muted-foreground/30">{i + 1}</span> + {line}</div>
-                                        ))}
-                                    </div>
-                                </div>
+                    {/* Result */}
+                    {call.result && (
+                        <div className="space-y-1">
+                            <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold flex items-center gap-2">
+                                <span className={`w-1 h-1 rounded-full ${call.status === 'failed' ? 'bg-red-500' : 'bg-green-500'}`}></span>
+                                Result
                             </div>
-                        )) || (
-                                <div className="p-12 text-center text-muted-foreground text-xs">NO FILE CHANGES DETECTED</div>
-                            )}
-                    </div>
-                )}
-
-                {view === "tools" && (
-                    <div className="h-full overflow-y-auto p-4 space-y-2 bg-black/40">
-                        {agent.toolCalls?.map((call) => (
-                            <div key={call.id} className="border border-border p-3 rounded-sm bg-muted/10 text-xs">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2 text-primary">
-                                        <Play className="w-3 h-3" />
-                                        <span className="font-bold">{call.tool}</span>
-                                    </div>
-                                    <span className="text-muted-foreground">{call.timestamp}</span>
-                                </div>
-                                <div className="pl-5 space-y-2">
-                                    <div className="text-muted-foreground">
-                                        <span className="text-[10px] opacity-70 block mb-1">ARGS</span>
-                                        <pre className="bg-black/30 p-2 rounded">{JSON.stringify(call.args, null, 2)}</pre>
-                                    </div>
-                                    {call.result && (
-                                        <div className="text-green-500/80">
-                                            <span className="text-[10px] text-muted-foreground opacity-70 block mb-1">RESULT</span>
-                                            <div className="flex items-start gap-2">
-                                                <Check className="w-3 h-3 mt-0.5" />
-                                                <span>{call.result}</span>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                            <div className={`rounded p-2 border overflow-x-auto ${call.status === 'failed'
+                                    ? 'bg-destructive/10 text-destructive border-destructive/20'
+                                    : 'bg-green-500/5 text-green-400 border-green-500/20'
+                                }`}>
+                                <pre className="whitespace-pre-wrap break-all">{call.result}</pre>
                             </div>
-                        )) || <div className="p-12 text-center text-muted-foreground text-xs">NO TOOL ACTIVITY RECORDED</div>}
-                    </div>
-                )}
-            </div>
-
-            {/* Footer Actions */}
-            <div className="border-t border-border px-6 py-4 flex items-center justify-between bg-background">
-                <div className="flex items-center gap-3">
-                    <button className="px-6 py-2 bg-primary text-primary-foreground text-xs font-bold tracking-wider hover:brightness-110 transition-all">
-                        APPROVE
-                    </button>
-                    <button className="px-6 py-2 border border-border text-muted-foreground hover:bg-muted text-xs font-medium tracking-wider transition-colors">
-                        REJECT
-                    </button>
+                        </div>
+                    )}
                 </div>
+            )}
+        </div>
+    )
+}
 
-                <button className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-                    EXPORT_LOG <ChevronRight className="w-3 h-3" />
-                </button>
+function StatusBadge({ status }: { status: string }) {
+    if (status === "running") {
+        return (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500">
+                <Clock className="w-3 h-3 animate-spin" />
+                <span className="text-[9px] font-bold uppercase">Running</span>
             </div>
+        )
+    }
+    if (status === "completed") {
+        return (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-500">
+                <Check className="w-3 h-3" />
+                <span className="text-[9px] font-bold uppercase">Success</span>
+            </div>
+        )
+    }
+    return (
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-destructive/10 border border-destructive/20 text-destructive">
+            <X className="w-3 h-3" />
+            <span className="text-[9px] font-bold uppercase">Failed</span>
         </div>
     )
 }

@@ -1,186 +1,109 @@
 "use client"
 
-import { useState } from "react"
-import { Terminal, FileCode, Activity, Play, ChevronRight, Check } from "lucide-react"
+import { FileDiff } from "@/lib/types"
+import { FileCode, Diff, ArrowRight, Minus, Plus } from "lucide-react"
 
-interface ToolCall {
-    id: string;
-    tool: string;
-    args: Record<string, any>;
-    status: "running" | "completed" | "failed";
-    result?: string;
-    timestamp: string;
+interface FileDiffViewerProps {
+    diffs: FileDiff[]
+    selectedFile: string | null
+    onSelectFile: (path: string) => void
 }
 
-interface FileDiff {
-    path: string;
-    original: string;
-    modified: string;
-    type: "modify" | "create" | "delete";
-}
+export function FileDiffViewer({ diffs, selectedFile, onSelectFile }: FileDiffViewerProps) {
+    if (diffs.length === 0) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8 animate-in fade-in duration-500">
+                <Diff className="w-12 h-12 mb-4 opacity-20" />
+                <p className="text-sm font-mono tracking-wide">NO FILE CHANGES DETECTED</p>
+                <p className="text-xs opacity-50 mt-2">Simulation has not modified any files yet.</p>
+            </div>
+        )
+    }
 
-interface Agent {
-    id: string
-    name: string
-    status: string
-    task: string
-    progress: number
-    output: string
-    files: string[]
-    toolCalls?: ToolCall[]
-    diffs?: FileDiff[]
-}
+    const activeDiff = selectedFile ? diffs.find(d => d.path === selectedFile) : diffs[0];
+    const displayDiff = activeDiff || diffs[0];
 
-interface AgentPanelProps {
-    agent: Agent
-}
+    const renderDiffContent = (original: string, modified: string) => {
+        const originalLines = original.split('\n');
+        const modifiedLines = modified.split('\n');
+        const maxLines = Math.max(originalLines.length, modifiedLines.length);
 
-export function AgentPanel({ agent }: AgentPanelProps) {
-    const [view, setView] = useState<"output" | "files" | "tools">("output")
+        return Array.from({ length: maxLines }).map((_, i) => {
+            const orig = originalLines[i] || '';
+            const mod = modifiedLines[i] || '';
+            const hasChange = orig !== mod;
+            const isAdded = !orig && mod;
+            const isRemoved = orig && !mod;
+
+            return (
+                <div key={i} className={`grid grid-cols-2 text-[10px] sm:text-xs font-mono border-b border-border/10 hover:bg-muted/30 transition-colors ${hasChange ? 'bg-muted/10' : ''}`}>
+                    {/* Original Side */}
+                    <div className={`p-1 border-r border-border/20 flex overflow-hidden ${isRemoved ? 'bg-destructive/10 text-destructive-foreground' : 'text-muted-foreground/70'}`}>
+                        <span className="w-6 text-right mr-3 select-none opacity-30 shrink-0">{i + 1}</span>
+                        <span className="whitespace-pre overflow-x-auto scrollbar-hide">{orig}</span>
+                    </div>
+                    {/* Modified Side */}
+                    <div className={`p-1 flex overflow-hidden ${isAdded ? 'bg-green-500/10 text-green-400' : hasChange ? 'bg-blue-500/10 text-blue-300' : 'text-foreground/80'}`}>
+                        <span className="w-6 text-right mr-3 select-none opacity-30 shrink-0">{i + 1}</span>
+                        <div className="flex w-full">
+                            {isAdded && <Plus className="w-3 h-3 mr-1 mt-0.5 shrink-0 text-green-500/50" />}
+                            <span className="whitespace-pre overflow-x-auto scrollbar-hide">{mod}</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        });
+    };
 
     return (
-        <div className="flex-1 flex flex-col bg-background/50">
-            {/* Header */}
-            <div className="border-b border-border px-6 py-4 bg-muted/20">
-                <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                            <div className="text-xl font-medium tracking-wide font-mono">{agent.name}</div>
-                        </div>
-                        <div className="text-xs text-muted-foreground tracking-wide font-mono pl-4">{agent.task}</div>
-                    </div>
-
-                    <div className="flex items-center gap-4 font-mono">
-                        <div className="text-[10px] text-muted-foreground">PROGRESS: {agent.progress}%</div>
-                        <div
-                            className={`text-[10px] px-2 py-1 border ${agent.status === "STREAMING" || agent.status === "THINKING"
-                                    ? "border-primary text-primary"
-                                    : agent.status === "READY"
-                                        ? "border-green-500 text-green-500"
-                                        : "border-muted-foreground text-muted-foreground"
-                                }`}
-                        >
-                            {agent.status}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="border-b border-border flex font-mono text-xs">
-                <button
-                    onClick={() => setView("output")}
-                    className={`px-6 py-3 flex items-center gap-2 border-r border-border transition-all ${view === "output" ? "bg-background text-foreground border-b-2 border-b-primary" : "hover:bg-muted/50 text-muted-foreground"
-                        }`}
-                >
-                    <Terminal className="w-3 h-3" />
-                    OUTPUT
-                </button>
-                <button
-                    onClick={() => setView("files")}
-                    className={`px-6 py-3 flex items-center gap-2 border-r border-border transition-all ${view === "files" ? "bg-background text-foreground border-b-2 border-b-primary" : "hover:bg-muted/50 text-muted-foreground"
-                        }`}
-                >
+        <div className="grid grid-cols-12 h-full gap-0 overflow-hidden bg-background">
+            {/* File List Sidebar */}
+            <div className="col-span-3 border-r border-border bg-muted/5 flex flex-col overflow-hidden">
+                <div className="p-3 border-b border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                     <FileCode className="w-3 h-3" />
-                    DIFFS
-                    <span className="px-1.5 py-0.5 rounded-full bg-muted text-[10px]">{agent.files.length}</span>
-                </button>
-                <button
-                    onClick={() => setView("tools")}
-                    className={`px-6 py-3 flex items-center gap-2 border-r border-border transition-all ${view === "tools" ? "bg-background text-foreground border-b-2 border-b-primary" : "hover:bg-muted/50 text-muted-foreground"
-                        }`}
-                >
-                    <Activity className="w-3 h-3" />
-                    TOOL CALLS
-                    <span className="px-1.5 py-0.5 rounded-full bg-muted text-[10px]">{agent.toolCalls?.length || 0}</span>
-                </button>
+                    Modified Files ({diffs.length})
+                </div>
+                <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin">
+                    {diffs.map((diff, index) => (
+                        <button
+                            key={`${index}-${diff.path}`}
+                            onClick={() => onSelectFile(diff.path)}
+                            className={`w-full text-left px-3 py-2 rounded-md text-xs font-mono transition-all duration-200 border ${displayDiff?.path === diff.path
+                                ? "bg-primary/10 border-primary/30 text-primary shadow-sm"
+                                : "border-transparent hover:bg-muted text-muted-foreground hover:text-foreground"
+                                } flex items-center justify-between group`}
+                        >
+                            <span className="truncate flex-1" title={diff.path}>
+                                {diff.path.split('/').pop()}
+                            </span>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full capitalize font-medium
+                                ${diff.type === 'create' ? 'bg-green-500/10 text-green-500' :
+                                    diff.type === 'delete' ? 'bg-destructive/10 text-destructive' :
+                                        'bg-blue-500/10 text-blue-500'}`}>
+                                {diff.type === 'modify' ? 'mod' : diff.type}
+                            </span>
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-hidden font-mono relative">
-                {view === "output" && (
-                    <div className="h-full overflow-y-auto p-6 bg-black/40">
-                        <pre className="text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground">
-                            <span className="text-primary">{">"}</span> {agent.output}
-                            <span className="animate-pulse inline-block w-2 h-4 bg-primary ml-1 align-middle opacity-50" />
-                        </pre>
+            {/* Diff View Area */}
+            <div className="col-span-9 flex flex-col h-full overflow-hidden bg-background/50">
+                <div className="p-3 border-b border-border flex items-center justify-between bg-muted/5">
+                    <div className="flex items-center gap-2 text-xs font-mono text-foreground font-medium">
+                        <span className="opacity-50">{displayDiff?.path.split('/').slice(0, -1).join('/')}/</span>
+                        <span className="text-primary">{displayDiff?.path.split('/').pop()}</span>
                     </div>
-                )}
-
-                {view === "files" && (
-                    <div className="h-full overflow-y-auto bg-black/40">
-                        {agent.diffs?.map((diff, index) => (
-                            <div key={index} className="border-b border-border">
-                                <div className="bg-muted/30 px-4 py-2 text-xs flex items-center justify-between text-muted-foreground">
-                                    <span>{diff.path}</span>
-                                    <span className="text-[10px] uppercase">{diff.type}</span>
-                                </div>
-                                <div className="grid grid-cols-2 text-[10px] divide-x divide-border">
-                                    <div className="p-4 overflow-x-auto bg-red-950/10 text-red-400/80">
-                                        {diff.original.split('\n').map((line, i) => (
-                                            <div key={i} className="whitespace-pre"> <span className="w-4 inline-block text-muted-foreground/30">{i + 1}</span> - {line}</div>
-                                        ))}
-                                    </div>
-                                    <div className="p-4 overflow-x-auto bg-green-950/10 text-green-400/80">
-                                        {diff.modified.split('\n').map((line, i) => (
-                                            <div key={i} className="whitespace-pre"> <span className="w-4 inline-block text-muted-foreground/30">{i + 1}</span> + {line}</div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )) || (
-                                <div className="p-12 text-center text-muted-foreground text-xs">NO FILE CHANGES DETECTED</div>
-                            )}
+                    <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                        <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-destructive/50"></div> Original</div>
+                        <ArrowRight className="w-3 h-3 opacity-30" />
+                        <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500/50"></div> Modified</div>
                     </div>
-                )}
-
-                {view === "tools" && (
-                    <div className="h-full overflow-y-auto p-4 space-y-2 bg-black/40">
-                        {agent.toolCalls?.map((call) => (
-                            <div key={call.id} className="border border-border p-3 rounded-sm bg-muted/10 text-xs">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2 text-primary">
-                                        <Play className="w-3 h-3" />
-                                        <span className="font-bold">{call.tool}</span>
-                                    </div>
-                                    <span className="text-muted-foreground">{call.timestamp}</span>
-                                </div>
-                                <div className="pl-5 space-y-2">
-                                    <div className="text-muted-foreground">
-                                        <span className="text-[10px] opacity-70 block mb-1">ARGS</span>
-                                        <pre className="bg-black/30 p-2 rounded">{JSON.stringify(call.args, null, 2)}</pre>
-                                    </div>
-                                    {call.result && (
-                                        <div className="text-green-500/80">
-                                            <span className="text-[10px] text-muted-foreground opacity-70 block mb-1">RESULT</span>
-                                            <div className="flex items-start gap-2">
-                                                <Check className="w-3 h-3 mt-0.5" />
-                                                <span>{call.result}</span>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )) || <div className="p-12 text-center text-muted-foreground text-xs">NO TOOL ACTIVITY RECORDED</div>}
-                    </div>
-                )}
-            </div>
-
-            {/* Footer Actions */}
-            <div className="border-t border-border px-6 py-4 flex items-center justify-between bg-background">
-                <div className="flex items-center gap-3">
-                    <button className="px-6 py-2 bg-primary text-primary-foreground text-xs font-bold tracking-wider hover:brightness-110 transition-all">
-                        APPROVE
-                    </button>
-                    <button className="px-6 py-2 border border-border text-muted-foreground hover:bg-muted text-xs font-medium tracking-wider transition-colors">
-                        REJECT
-                    </button>
                 </div>
 
-                <button className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-                    EXPORT_LOG <ChevronRight className="w-3 h-3" />
-                </button>
+                <div className="flex-1 overflow-auto scrollbar-thin relative">
+                    {displayDiff && renderDiffContent(displayDiff.original, displayDiff.modified)}
+                </div>
             </div>
         </div>
     )
