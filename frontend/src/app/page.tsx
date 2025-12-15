@@ -1,12 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { AgentPanel } from "@/components/agent-panel"
-import { StatusBar } from "@/components/status-bar"
+import { AgentPanel } from "@/components/agents/agent-panel"
+import { StatusBar } from "@/components/ui/status-bar"
 import { Settings } from "@/components/settings"
-import { PromptForm } from "@/components/prompt-form" // Added missing import
-import { MOCK_AGENTS, streamResponse, MOCK_TOOL_CALLS, MOCK_DIFFS } from "@/lib/mock-api"
-import { MOCK_AGENTS as INITIAL_AGENTS } from "@/lib/mock-api"
+import { PromptForm } from "@/components/prompt/prompt-form"
+import { MOCK_AGENTS, streamResponse, MOCK_TOOL_CALLS, MOCK_DIFFS } from "@/lib/agents/mock-api"
+import { MOCK_AGENTS as INITIAL_AGENTS } from "@/lib/agents/mock-api"
 
 
 export default function Page() {
@@ -80,10 +80,10 @@ export default function Page() {
                   <div className="text-xs font-medium tracking-wide">{agent.name}</div>
                   <div
                     className={`text-[9px] px-1.5 py-0.5 border ${agent.status === "STREAMING" || agent.status === "THINKING"
-                        ? "border-primary text-primary animate-pulse"
-                        : agent.status === "READY" || agent.status === "IDLE"
-                          ? "border-muted-foreground text-muted-foreground"
-                          : "border-destructive text-destructive"
+                      ? "border-primary text-primary animate-pulse"
+                      : agent.status === "READY" || agent.status === "IDLE"
+                        ? "border-muted-foreground text-muted-foreground"
+                        : "border-destructive text-destructive"
                       }`}
                   >
                     {agent.status}
