@@ -35,7 +35,7 @@ export function PromptForm({ onSubmit, disabled }: PromptFormProps) {
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="Enter system command..."
                     disabled={disabled}
-                    className="w-full min-h-[80px] bg-background border border-border px-3 py-2 text-xs font-mono resize-y focus:ring-1 focus:ring-primary focus:border-primary transition-all placeholder:text-muted-foreground/50 rounded-sm"
+                    className="w-full min-h-[80px] bg-background border border-border px-3 py-2 text-base md:text-xs font-mono resize-y focus:ring-1 focus:ring-primary focus:border-primary transition-all placeholder:text-muted-foreground/50 rounded-sm"
                     onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                             e.preventDefault()
@@ -80,9 +80,9 @@ export function PromptForm({ onSubmit, disabled }: PromptFormProps) {
                     <button
                         type="submit"
                         disabled={disabled || !prompt.trim()}
-                        className="bg-primary text-primary-foreground p-1.5 rounded-sm hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                        className="bg-primary text-primary-foreground p-2 md:p-1.5 rounded-sm hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
                     >
-                        {disabled ? <Sparkles className="w-3 h-3 animate-spin" /> : <ArrowRight className="w-3 h-3" />}
+                        {disabled ? <Sparkles className="w-4 h-4 md:w-3 md:h-3 animate-spin" /> : <ArrowRight className="w-4 h-4 md:w-3 md:h-3" />}
                     </button>
                 </div>
             </div>

@@ -1,6 +1,14 @@
 
+<<<<<<< HEAD
 # Southbridge Frontend Take Home
 
+=======
+
+# Southbridge Frontend Take Home
+
+A high-fidelity frontend implementation for the Southbridge multi-agent interface, built with Next.js and Bun.
+
+>>>>>>> ab3519ea13f742b9249c1419b73bb7be2171b1f5
 > **Note:** This project uses **mock APIs** to simulate agent behavior (Claude Code, Gemini CLI, Codex). No real agent backend is connected; all outputs are for UI demonstration and testing purposes.
 
 ---
@@ -120,5 +128,8 @@ src/
 * Progress tracking and completion detection
 * Categorized logs ([SYSTEM], [TOOL], [THOUGHT], etc.)
 
+<<<<<<< HEAD
 
 Do you want me to do that next?
+=======
+>>>>>>> ab3519ea13f742b9249c1419b73bb7be2171b1f5

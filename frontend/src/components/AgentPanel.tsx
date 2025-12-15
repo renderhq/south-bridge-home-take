@@ -208,8 +208,8 @@ export function AgentPanel({ agent, showToast, onUpdateAgent, onStopAgent }: Age
 
             {/* Footer Actions */}
             <div className="bg-background border-t border-border p-3 flex-shrink-0">
-                <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 text-[10px] sm:text-xs text-muted-foreground font-mono">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 text-[10px] sm:text-xs text-muted-foreground font-mono w-full sm:w-auto justify-between sm:justify-start">
                         <div className="flex items-center gap-1.5" title="Modified Files">
                             <FileCode className="w-3.5 h-3.5" />
                             <span>{agent.files.length}</span>
@@ -224,7 +224,7 @@ export function AgentPanel({ agent, showToast, onUpdateAgent, onStopAgent }: Age
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                         <button
                             onClick={handleExportLog}
                             className="p-2 hover:bg-muted rounded text-muted-foreground transition-colors border border-transparent hover:border-border"
